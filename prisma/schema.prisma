@@ -1,0 +1,263 @@
+// App de Gestión Político-Electoral Colombia
+// Esquema de base de datos con sistema multitenancy por Candidato
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // directUrl = env("DIRECT_URL")  // Comentado temporalmente - Direct URL no es IPv4 compatible
+}
+
+// ============================================
+// DIVISIÓN GEOGRÁFICA DE COLOMBIA
+// ============================================
+
+model Department {
+  id             String         @id @default(cuid())
+  name           String // Nombre del departamento (ej: Antioquia, Bogotá)
+  code           String         @unique // Código DANE del departamento
+  municipalities Municipality[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Municipality {
+  id           String     @id @default(cuid())
+  name         String // Nombre del municipio
+  code         String     @unique // Código DANE del municipio
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  pollingStations PollingStation[]
+  voters          Voter[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PollingStation {
+  id        String  @id @default(cuid())
+  name      String // Nombre del puesto de votación
+  code      String // Código del puesto
+  address   String? // Dirección
+  community String? // Comuna
+  latitude  Float? // Latitud
+  longitude Float? // Longitud
+
+  // Nuevos campos del CSV actualizado
+  totalVoters  Int @default(0) // Total de votantes
+  maleVoters   Int @default(0) // Votantes hombres
+  femaleVoters Int @default(0) // Votantes mujeres
+  totalTables  Int @default(0) // Número real de mesas
+
+  // Campos de elecciones (Cámara y Senado)
+  camara         Boolean      @default(true) // Elección de Cámara
+  senado         Boolean      @default(true) // Elección de Senado
+  municipalityId String
+  municipality   Municipality @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
+
+  voters             Voter[]
+  electoralWitnesses ElectoralWitness[]
+  tables             Table[] // Nueva relación con mesas
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// USUARIOS Y JERARQUÍA POLÍTICA
+// ============================================
+
+model Candidate {
+  id             String  @id @default(cuid())
+  document       String  @unique // Cédula - Llave primaria
+  name           String // Nombre completo
+  party          String // Partido político
+  password       String // Contraseña hasheada
+  primaryColor   String?
+  secondaryColor String?
+  logoUrl        String?
+  photoUrl       String?
+
+  // Multitenancy: Relación con líderes y votantes
+  leaders Leader[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Leader {
+  id       String @id @default(cuid())
+  document String @unique // Cédula - Única en todo el sistema
+  name     String // Nombre completo
+  password String // Contraseña hasheada
+
+  // Vinculación obligatoria a un Candidato
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  // Jerarquía de sublíderes (auto-relación)
+  parentLeaderId String? // ID del líder superior (null si es líder principal)
+  parentLeader   Leader?  @relation("LeaderHierarchy", fields: [parentLeaderId], references: [id], onDelete: SetNull)
+  subLeaders     Leader[] @relation("LeaderHierarchy") // Sublíderes bajo este líder
+
+  // Gestión de votantes
+  voters Voter[]
+
+  // Gestión de testigos electorales
+  electoralWitnesses ElectoralWitness[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Voter {
+  id       String  @id @default(cuid())
+  document String  @unique // Cédula - Única en todo el sistema
+  name     String // Nombre completo
+  tel      String? // Teléfono fijo
+  celular  String? // Teléfono celular
+  email    String? // Correo electrónico
+  password String? // Contraseña hasheada (solo para testigos electorales)
+
+  // Vinculación a un Líder (opcional, puede autoregistrarse)
+  leaderId String?
+  leader   Leader? @relation(fields: [leaderId], references: [id], onDelete: SetNull)
+
+  // Geolocalización de voto
+  pollingStationId String?
+  pollingStation   PollingStation? @relation(fields: [pollingStationId], references: [id], onDelete: SetNull)
+  municipalityId   String?
+  municipality     Municipality?   @relation(fields: [municipalityId], references: [id], onDelete: SetNull)
+
+  tableNumber String? // Número de mesa según censo electoral
+
+  // Relación con testigos electorales
+  electoralWitness ElectoralWitness?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Índices para optimizar búsquedas frecuentes
+model DocumentIndex {
+  id        String   @id @default(cuid())
+  document  String   @unique
+  userType  String // 'candidate', 'leader', 'voter'
+  linkedTo  String? // Nombre del candidato al que está vinculado (para validaciones)
+  createdAt DateTime @default(now())
+}
+
+// ============================================
+// SISTEMA DE TESTIGOS ELECTORALES
+// ============================================
+
+model ElectoralWitness {
+  id               String          @id @default(cuid())
+  voterId          String          @unique // Un votante solo puede ser testigo una vez
+  voter            Voter           @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  leaderId         String // Líder que asigna el testigo
+  leader           Leader          @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+  pollingStationId String // Puesto de votación asignado
+  pollingStation   PollingStation  @relation(fields: [pollingStationId], references: [id], onDelete: Cascade)
+  assignedTables   String // JSON array de números de mesa: "[5,8,15,20]"
+  status           WitnessStatus   @default(ASSIGNED)
+  experience       ExperienceLevel @default(FIRST_TIME)
+  availability     Availability    @default(FULL_DAY)
+  hasTransport     Boolean         @default(false)
+  emergencyContact String? // Contacto de emergencia
+  notes            String? // Notas adicionales
+  confirmedAt      DateTime? // Fecha de confirmación
+
+  // Checklist del día electoral
+  confirmedAttendance Boolean @default(false) // Confirmó que asistirá
+  receivedCredential  Boolean @default(false) // Recibió credencial
+  arrivedAtStation    Boolean @default(false) // Llegó al puesto
+  reportedVotingStart Boolean @default(false) // Reportó inicio de votación
+  reportedVotingEnd   Boolean @default(false) // Reportó cierre de votación
+  deliveredAct        Boolean @default(false) // Entregó acta
+
+  // Timestamps del checklist para auditoría
+  arrivedAt      DateTime? // Hora de llegada
+  votingStartAt  DateTime? // Hora de inicio reportada
+  votingEndAt    DateTime? // Hora de cierre reportada
+  actDeliveredAt DateTime? // Hora de entrega de acta
+
+  // Código único para auto-reporte
+  uniqueCode String? @unique // Código para que el testigo se auto-reporte
+
+  // Relación con reportes de mesas
+  tableReports Table[] // Mesas que ha reportado
+
+  // Estadísticas del testigo
+  tablesReported Int       @default(0) // Número de mesas reportadas
+  lastReportAt   DateTime? // Última vez que reportó
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// SISTEMA DE REPORTES DE MESAS
+// ============================================
+
+model Table {
+  id               String         @id @default(cuid())
+  number           Int // Número de mesa (1, 2, 3, etc.)
+  pollingStationId String
+  pollingStation   PollingStation @relation(fields: [pollingStationId], references: [id], onDelete: Cascade)
+
+  // Datos del día electoral (ingresados por testigos)
+  votesRegistered Int? // Votos registrados en el acta
+  votesCandidate  Int? // Votos para nuestro candidato
+  votesBlank      Int? // Votos en blanco
+  votesNull       Int? // Votos nulos
+  totalVotes      Int? // Total de votos (suma)
+
+  // Metadata del reporte
+  reportedAt DateTime? // Cuándo se reportó
+  reportedBy String? // ID del testigo que reportó
+  witness    ElectoralWitness? @relation(fields: [reportedBy], references: [id])
+
+  // Validación
+  isValidated Boolean   @default(false)
+  validatedBy String? // ID del líder/candidato que validó
+  validatedAt DateTime?
+
+  // Observaciones
+  observations        String? // Notas del testigo
+  hasIrregularities   Boolean @default(false)
+  irregularityType    String? // Tipo de irregularidad
+  irregularityDetails String? // Detalles de la irregularidad
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pollingStationId, number])
+  @@index([reportedBy])
+  @@index([pollingStationId])
+}
+
+// Enums para el sistema de testigos
+enum WitnessStatus {
+  ASSIGNED // Asignado
+  CONFIRMED // Confirmado
+  ACTIVE // Activo el día de elecciones
+  COMPLETED // Completó su función
+  CANCELLED // Cancelado
+}
+
+enum ExperienceLevel {
+  FIRST_TIME // Primera vez
+  EXPERIENCED // Experimentado
+}
+
+enum Availability {
+  FULL_DAY // Todo el día
+  MORNING // Solo mañana
+  AFTERNOON // Solo tarde
+}
