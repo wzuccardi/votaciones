@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 
-export default function VoterDashboard() {
+function VoterDashboardContent() {
   const searchParams = useSearchParams()
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [voterDetails, setVoterDetails] = useState<any>(null)
@@ -270,5 +270,13 @@ export default function VoterDashboard() {
         </div>
       </footer>
     </div>
+  )
+}
+
+export default function VoterDashboard() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Cargando...</div>}>
+      <VoterDashboardContent />
+    </Suspense>
   )
 }
