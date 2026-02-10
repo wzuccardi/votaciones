@@ -20,6 +20,11 @@ function addSecurityHeaders(res: NextResponse) {
 }
 
 async function checkRateLimit(req: NextRequest, path: string): Promise<boolean> {
+  // Temporalmente deshabilitado para inicialización de datos
+  if (process.env.NODE_ENV === 'production') {
+    return true
+  }
+
   const ip =
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     req.headers.get('x-real-ip') ||
@@ -45,8 +50,8 @@ async function checkRateLimit(req: NextRequest, path: string): Promise<boolean> 
     return await fallbackRateLimit(ip, limit)
   }
 
-  // En producción sin Redis, bloquear (fuerza a configurar Redis)
-  return false
+  // En producción sin Redis, permitir temporalmente
+  return true
 }
 
 export async function middleware(req: NextRequest) {
