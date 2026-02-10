@@ -45,13 +45,8 @@ async function checkRateLimit(req: NextRequest, path: string): Promise<boolean> 
   }
 
   // Fallback en memoria para desarrollo (SOLO desarrollo)
-  if (process.env.NODE_ENV !== 'production') {
-    const limit = path.startsWith('/api/auth') ? 10 : 120
-    return await fallbackRateLimit(ip, limit)
-  }
-
-  // En producción sin Redis, permitir temporalmente
-  return true
+  const limit = path.startsWith('/api/auth') ? 10 : 120
+  return await fallbackRateLimit(ip, limit)
 }
 
 export async function middleware(req: NextRequest) {
