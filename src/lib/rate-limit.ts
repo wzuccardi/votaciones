@@ -10,11 +10,11 @@ const redis = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_RE
     })
   : null
 
-// Estrategia de sliding window: 120 requests por minuto
+// Estrategia de sliding window: 300 requests por minuto (aumentado para producción)
 export const ratelimit = redis
   ? new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(120, '1 m'),
+      limiter: Ratelimit.slidingWindow(300, '1 m'),
       analytics: true,
       prefix: '@upstash/ratelimit',
     })
@@ -24,7 +24,7 @@ export const ratelimit = redis
 export const authRatelimit = redis
   ? new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(100, '1 m'), // Aumentado para desarrollo
+      limiter: Ratelimit.slidingWindow(200, '1 m'), // Aumentado para producción
       analytics: true,
       prefix: '@upstash/ratelimit/auth',
     })
@@ -33,7 +33,7 @@ export const authRatelimit = redis
 export const apiRatelimit = redis
   ? new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(60, '1 m'), // Rate limit para APIs generales
+      limiter: Ratelimit.slidingWindow(150, '1 m'), // Aumentado para APIs generales
       analytics: true,
       prefix: '@upstash/ratelimit/api',
     })
@@ -45,7 +45,7 @@ export const apiRatelimit = redis
  */
 const memoryBucket = new Map<string, { count: number; ts: number }>()
 
-export async function fallbackRateLimit(identifier: string, limit: number = 120): Promise<boolean> {
+export async function fallbackRateLimit(identifier: string, limit: number = 300): Promise<boolean> {
   const now = Date.now()
   const windowMs = 60_000 // 1 minuto
   
