@@ -5,12 +5,16 @@ const nextConfig = {
   output: 'standalone',
   
   // Optimizaciones para producción
-  swcMinify: true,
   compress: true,
   
+  // Turbopack config (requerido para Next.js 16)
+  turbopack: {},
+  
+  // Paquetes externos para server components
+  serverExternalPackages: ['@prisma/client'],
+  
   experimental: {
-    optimizePackageImports: ['lucide-react'],
-    serverComponentsExternalPackages: ['@prisma/client']
+    optimizePackageImports: ['lucide-react']
   },
 
   // Headers de seguridad
@@ -36,9 +40,14 @@ const nextConfig = {
     ]
   },
 
-  // Configuración de imágenes
+  // Configuración de imágenes (actualizado para Next.js 16)
   images: {
-    domains: ['localhost'],
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost'
+      }
+    ],
     unoptimized: false
   }
 }

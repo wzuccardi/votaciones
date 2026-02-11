@@ -1,5 +1,5 @@
 # Dockerfile para producción optimizado
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 
 # Instalar dependencias necesarias
 RUN apk add --no-cache libc6-compat
@@ -8,12 +8,12 @@ WORKDIR /app
 # Instalar dependencias
 FROM base AS deps
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install --only=production
 
 # Build de la aplicación
 FROM base AS builder
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 COPY . .
 
 # Generar Prisma client
