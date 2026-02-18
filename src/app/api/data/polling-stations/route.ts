@@ -10,13 +10,23 @@ export async function GET(req: NextRequest) {
 
     const pollingStations = await db.pollingStation.findMany({
       where,
-      orderBy: { name: 'asc' }
+      orderBy: { name: 'asc' },
+      include: {
+        municipality: {
+          select: {
+            name: true,
+            code: true
+          }
+        },
+        _count: {
+          select: {
+            tables: true
+          }
+        }
+      }
     })
 
-    return NextResponse.json({
-      success: true,
-      data: pollingStations
-    })
+    return NextResponse.json(pollingStations)
   } catch (error) {
     console.error('Error fetching polling stations:', error)
     return NextResponse.json({
