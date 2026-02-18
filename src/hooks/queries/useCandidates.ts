@@ -4,6 +4,14 @@ interface Candidate {
     id: string
     name: string
     party: string
+    document: string
+    primaryColor?: string
+    secondaryColor?: string
+    logoUrl?: string
+    photoUrl?: string
+    _count: {
+        leaders: number
+    }
 }
 
 async function fetchCandidates(): Promise<Candidate[]> {
@@ -12,7 +20,8 @@ async function fetchCandidates(): Promise<Candidate[]> {
         throw new Error('Failed to fetch candidates')
     }
     const data = await response.json()
-    return data.success ? data.data : []
+    // El endpoint ahora retorna directamente el array
+    return Array.isArray(data) ? data : []
 }
 
 export function useCandidates() {

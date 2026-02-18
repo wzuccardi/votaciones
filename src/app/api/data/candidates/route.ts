@@ -4,13 +4,17 @@ import { db } from '@/lib/db'
 export async function GET(req: NextRequest) {
   try {
     const candidates = await db.candidate.findMany({
-      orderBy: { name: 'asc' }
+      orderBy: { name: 'asc' },
+      include: {
+        _count: {
+          select: {
+            leaders: true
+          }
+        }
+      }
     })
 
-    return NextResponse.json({
-      success: true,
-      data: candidates
-    })
+    return NextResponse.json(candidates)
   } catch (error) {
     console.error('Error fetching candidates:', error)
     return NextResponse.json({

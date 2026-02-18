@@ -158,7 +158,8 @@ export default function LeaderDashboard() {
         const res = await fetch('/api/data/municipalities')
         if (res.ok) {
           const data = await res.json()
-          if (data.success) setMunicipalities(data.data || [])
+          // El endpoint ahora retorna directamente el array
+          if (Array.isArray(data)) setMunicipalities(data)
         }
       } catch (e) {
         console.error('Error loading municipalities:', e)
@@ -174,9 +175,10 @@ export default function LeaderDashboard() {
         const res = await fetch(`/api/data/polling-stations?municipalityId=${selectedMunicipalityId}`)
         if (res.ok) {
           const data = await res.json()
-          if (data.success) {
-            setPollingStations(data.data || [])
-            const uniqueZones = Array.from(new Set((data.data || []).map((s: any) => s.community).filter((z: string | null) => !!z)))
+          // El endpoint ahora retorna directamente el array
+          if (Array.isArray(data)) {
+            setPollingStations(data)
+            const uniqueZones = Array.from(new Set(data.map((s: any) => s.community).filter((z: string | null) => !!z)))
             setZones(uniqueZones as string[])
             setSelectedZone('')
             setNewVoterForm({ ...newVoterForm, pollingStation: '' })
@@ -194,6 +196,7 @@ export default function LeaderDashboard() {
         const res = await fetch(`/api/data/tables?pollingStationId=${selectedPollingStationId}`)
         if (res.ok) {
           const data = await res.json()
+          // El endpoint de tables retorna { success, data, metadata }
           if (data.success) setTables(data.data || [])
         }
       } catch (e) {}
@@ -216,7 +219,8 @@ export default function LeaderDashboard() {
         const res = await fetch(`/api/data/polling-stations?municipalityId=${m.id}`)
         if (res.ok) {
           const data = await res.json()
-          if (data.success) setPollingStations(data.data || [])
+          // El endpoint ahora retorna directamente el array
+          if (Array.isArray(data)) setPollingStations(data)
         }
       } catch (e) {
         setPollingStations([])
@@ -309,8 +313,9 @@ export default function LeaderDashboard() {
         const res = await fetch(`/api/data/polling-stations?municipalityId=${selectedVoterForWitness.municipalityId}`)
         if (res.ok) {
           const data = await res.json()
-          if (data.success) {
-            setWitnessPollingStations(data.data || [])
+          // El endpoint ahora retorna directamente el array
+          if (Array.isArray(data)) {
+            setWitnessPollingStations(data)
             // Si el votante ya tiene un puesto asignado, preseleccionarlo
             if (selectedVoterForWitness.pollingStationId) {
               setWitnessSelectedPollingStationId(selectedVoterForWitness.pollingStationId)
@@ -335,6 +340,7 @@ export default function LeaderDashboard() {
         const res = await fetch(`/api/data/tables?pollingStationId=${witnessSelectedPollingStationId}`)
         if (res.ok) {
           const data = await res.json()
+          // El endpoint de tables retorna { success, data, metadata }
           if (data.success) {
             const tableNumbers = (data.data || []).map((t: any) => parseInt(t.number)).filter((n: number) => !isNaN(n))
             setAvailableTables(tableNumbers)
@@ -353,6 +359,7 @@ export default function LeaderDashboard() {
       const res = await fetch(`/api/dashboard/leader/witnesses?leaderId=${currentUser.id}`)
       if (res.ok) {
         const data = await res.json()
+        // El endpoint de witnesses retorna { success, data }
         if (data.success) setWitnesses(data.data || [])
       }
     } catch (e) {
@@ -630,8 +637,9 @@ export default function LeaderDashboard() {
       const res = await fetch(`/api/data/polling-stations?municipalityId=${municipalityId}`)
       if (res.ok) {
         const data = await res.json()
-        if (data.success) {
-          setPollingStations(data.data || [])
+        // El endpoint ahora retorna directamente el array
+        if (Array.isArray(data)) {
+          setPollingStations(data)
           if (pollingStationId) {
             setSelectedPollingStationId(pollingStationId)
           }
@@ -647,6 +655,7 @@ export default function LeaderDashboard() {
       const res = await fetch(`/api/data/tables?pollingStationId=${pollingStationId}`)
       if (res.ok) {
         const data = await res.json()
+        // El endpoint de tables retorna { success, data, metadata }
         if (data.success) setTables(data.data || [])
       }
     } catch (e) {

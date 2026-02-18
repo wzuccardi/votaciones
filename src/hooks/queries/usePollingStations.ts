@@ -4,7 +4,20 @@ interface PollingStation {
     id: string
     name: string
     code: string
+    address?: string
     community?: string
+    totalVoters: number
+    maleVoters: number
+    femaleVoters: number
+    totalTables: number
+    municipalityId: string
+    municipality: {
+        name: string
+        code: string
+    }
+    _count: {
+        tables: number
+    }
 }
 
 async function fetchPollingStations(municipalityId: string): Promise<PollingStation[]> {
@@ -13,7 +26,8 @@ async function fetchPollingStations(municipalityId: string): Promise<PollingStat
         throw new Error('Failed to fetch polling stations')
     }
     const data = await response.json()
-    return data.success ? data.data : []
+    // El endpoint ahora retorna directamente el array
+    return Array.isArray(data) ? data : []
 }
 
 async function fetchAllPollingStations(): Promise<PollingStation[]> {
@@ -22,7 +36,8 @@ async function fetchAllPollingStations(): Promise<PollingStation[]> {
         throw new Error('Failed to fetch polling stations')
     }
     const data = await response.json()
-    return data.success ? data.data : []
+    // El endpoint ahora retorna directamente el array
+    return Array.isArray(data) ? data : []
 }
 
 export function usePollingStations(municipalityId?: string | null) {

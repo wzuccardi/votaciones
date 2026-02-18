@@ -146,8 +146,9 @@ export default function ResultadosElectoralesPage() {
     try {
       const response = await fetch('/api/data/municipalities')
       const data = await response.json()
-      if (data.success) {
-        setAllMunicipalities(data.data || [])
+      // El endpoint ahora retorna directamente el array
+      if (Array.isArray(data)) {
+        setAllMunicipalities(data)
       }
     } catch (error) {
       console.error('Error loading municipalities:', error)
@@ -158,8 +159,9 @@ export default function ResultadosElectoralesPage() {
     try {
       const response = await fetch(`/api/data/polling-stations?municipalityId=${municipalityId}`)
       const data = await response.json()
-      if (data.success) {
-        setAllPollingStations(data.data || [])
+      // El endpoint ahora retorna directamente el array
+      if (Array.isArray(data)) {
+        setAllPollingStations(data)
       }
     } catch (error) {
       console.error('Error loading polling stations:', error)

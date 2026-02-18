@@ -17,15 +17,18 @@ export async function GET(req: NextRequest) {
             name: true,
             party: true
           }
+        },
+        _count: {
+          select: {
+            voters: true,
+            subLeaders: true
+          }
         }
       },
       orderBy: { name: 'asc' }
     })
 
-    return NextResponse.json({
-      success: true,
-      data: leaders
-    })
+    return NextResponse.json(leaders)
   } catch (error) {
     console.error('Error fetching leaders:', error)
     return NextResponse.json({

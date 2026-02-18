@@ -316,7 +316,8 @@ export default function CandidateDashboard() {
         const res = await fetch('/api/data/municipalities')
         if (res.ok) {
           const data = await res.json()
-          if (data.success) setMunicipalities(data.data || [])
+          // El endpoint ahora retorna directamente el array
+          if (Array.isArray(data)) setMunicipalities(data)
         }
       } catch (e) {
         console.error('Error loading municipalities:', e)
@@ -346,8 +347,9 @@ export default function CandidateDashboard() {
         const response = await fetch(`/api/data/polling-stations?municipalityId=${municipality.id}`)
         if (response.ok) {
           const data = await response.json()
-          if (data.success && data.data) {
-            setPollingStations(data.data)
+          // El endpoint ahora retorna directamente el array
+          if (Array.isArray(data)) {
+            setPollingStations(data)
           }
         }
       } catch (error) {
