@@ -53,3 +53,11 @@ CREDENCIALES.md
 **/backups/*.db
 cleanup-report-*.json
 import-*-report.json
+
+# archivos grandes y temporales
+*.tar
+*.tar.gz
+*.tar.zip
+*.zip
+temp_key
+*.key
