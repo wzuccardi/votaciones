@@ -90,7 +90,7 @@ export function SubLeadersManager({ leaderId, leaderName, candidateName }: SubLe
       const res = await fetch('/api/data/municipalities')
       if (res.ok) {
         const data = await res.json()
-        if (data.success) setMunicipalities(data.data || [])
+        if (Array.isArray(data)) setMunicipalities(data)
       }
     } catch (e) {
       console.error('Error loading municipalities:', e)
@@ -102,7 +102,7 @@ export function SubLeadersManager({ leaderId, leaderName, candidateName }: SubLe
       const res = await fetch(`/api/data/polling-stations?municipalityId=${munId}`)
       if (res.ok) {
         const data = await res.json()
-        if (data.success) setPollingStations(data.data || [])
+        if (Array.isArray(data)) setPollingStations(data)
       }
     } catch (e) {
       console.error('Error loading polling stations:', e)
