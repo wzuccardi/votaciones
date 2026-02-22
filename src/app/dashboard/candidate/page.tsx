@@ -22,7 +22,9 @@ import {
   Mail,
   FileText,
   Shield,
-  BarChart3
+  BarChart3,
+  Pencil,
+  Trash2
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSession, signOut } from 'next-auth/react'
@@ -74,13 +76,17 @@ function LeaderTreeNode({
   level, 
   expandedLeaderId, 
   toggleLeaderExpansion, 
-  leaderVoters 
+  leaderVoters,
+  onEditLeader,
+  onDeleteLeader
 }: { 
   leader: any
   level: number
   expandedLeaderId: string | null
   toggleLeaderExpansion: (id: string) => void
   leaderVoters: Record<string, Voter[]>
+  onEditLeader: (leader: any) => void
+  onDeleteLeader: (leader: any) => void
 }) {
   const isExpanded = expandedLeaderId === leader.id
   const hasSubLeaders = leader.subLeaders && leader.subLeaders.length > 0
@@ -125,6 +131,30 @@ function LeaderTreeNode({
                   {leader.subLeaders.length} sublíderes
                 </Badge>
               )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEditLeader(leader)
+                }}
+                title="Editar líder"
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDeleteLeader(leader)
+                }}
+                title="Eliminar líder"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
               <Button 
                 variant="ghost" 
                 size="sm"
@@ -196,6 +226,8 @@ function LeaderTreeNode({
               expandedLeaderId={expandedLeaderId}
               toggleLeaderExpansion={toggleLeaderExpansion}
               leaderVoters={leaderVoters}
+              onEditLeader={onEditLeader}
+              onDeleteLeader={onDeleteLeader}
             />
           ))}
         </div>
@@ -224,6 +256,19 @@ export default function CandidateDashboard() {
   const [pollingStations, setPollingStations] = useState<any[]>([])
   const [municipalities, setMunicipalities] = useState<any[]>([])
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  
+  // Estados para edición de líderes
+  const [isEditLeaderDialogOpen, setIsEditLeaderDialogOpen] = useState(false)
+  const [isDeleteLeaderDialogOpen, setIsDeleteLeaderDialogOpen] = useState(false)
+  const [selectedLeaderForEdit, setSelectedLeaderForEdit] = useState<any>(null)
+  const [selectedLeaderForDelete, setSelectedLeaderForDelete] = useState<any>(null)
+  const [editLeaderForm, setEditLeaderForm] = useState({
+    name: '',
+    document: '',
+    password: '',
+    parentLeaderId: ''
+  })
+  const [isSubmittingLeader, setIsSubmittingLeader] = useState(false)
 
   useEffect(() => {
     if (isRedirecting) return
@@ -715,6 +760,95 @@ export default function CandidateDashboard() {
     signOut({ callbackUrl: '/' })
   }
 
+  // Funciones para edición de líderes
+  const handleEditLeader = (leader: any) => {
+    setSelectedLeaderForEdit(leader)
+    setEditLeaderForm({
+      name: leader.name,
+      document: leader.document,
+      password: '',
+      parentLeaderId: leader.parentLeaderId || ''
+    })
+    setIsEditLeaderDialogOpen(true)
+  }
+
+  const handleDeleteLeader = (leader: any) => {
+    setSelectedLeaderForDelete(leader)
+    setIsDeleteLeaderDialogOpen(true)
+  }
+
+  const submitEditLeader = async () => {
+    if (!selectedLeaderForEdit || !editLeaderForm.name || !editLeaderForm.document) {
+      toast.error('Por favor completa todos los campos requeridos')
+      return
+    }
+
+    setIsSubmittingLeader(true)
+    try {
+      const response = await fetch('/api/dashboard/candidate/leaders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leaderId: selectedLeaderForEdit.id,
+          name: editLeaderForm.name,
+          document: editLeaderForm.document,
+          password: editLeaderForm.password || undefined,
+          parentLeaderId: editLeaderForm.parentLeaderId || null
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        toast.success('Líder actualizado exitosamente')
+        setIsEditLeaderDialogOpen(false)
+        setSelectedLeaderForEdit(null)
+        setEditLeaderForm({ name: '', document: '', password: '', parentLeaderId: '' })
+        // Recargar líderes
+        fetchData(currentUser.id)
+      } else {
+        toast.error(data.message || 'Error al actualizar el líder')
+      }
+    } catch (error) {
+      console.error('Error updating leader:', error)
+      toast.error('Error al actualizar el líder')
+    } finally {
+      setIsSubmittingLeader(false)
+    }
+  }
+
+  const confirmDeleteLeader = async () => {
+    if (!selectedLeaderForDelete) return
+
+    setIsSubmittingLeader(true)
+    try {
+      const response = await fetch('/api/dashboard/candidate/leaders', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leaderId: selectedLeaderForDelete.id
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        toast.success('Líder eliminado exitosamente')
+        setIsDeleteLeaderDialogOpen(false)
+        setSelectedLeaderForDelete(null)
+        // Recargar líderes
+        fetchData(currentUser.id)
+      } else {
+        toast.error(data.message || 'Error al eliminar el líder')
+      }
+    } catch (error) {
+      console.error('Error deleting leader:', error)
+      toast.error('Error al eliminar el líder')
+    } finally {
+      setIsSubmittingLeader(false)
+    }
+  }
+
   const filteredVoters = allVoters.filter(voter => {
     const query = searchQuery.toLowerCase()
 
@@ -982,6 +1116,8 @@ export default function CandidateDashboard() {
                           expandedLeaderId={expandedLeaderId}
                           toggleLeaderExpansion={toggleLeaderExpansion}
                           leaderVoters={leaderVoters}
+                          onEditLeader={handleEditLeader}
+                          onDeleteLeader={handleDeleteLeader}
                         />
                       ))
                     )}
@@ -1386,6 +1522,150 @@ export default function CandidateDashboard() {
             </Card>
             </div>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de Edición de Líder */}
+      <Dialog open={isEditLeaderDialogOpen} onOpenChange={setIsEditLeaderDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Líder</DialogTitle>
+            <DialogDescription>
+              Actualiza la información del líder
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-name">Nombre Completo *</Label>
+              <Input
+                id="edit-name"
+                value={editLeaderForm.name}
+                onChange={(e) => setEditLeaderForm({ ...editLeaderForm, name: e.target.value })}
+                placeholder="Nombre completo"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="edit-document">Documento *</Label>
+              <Input
+                id="edit-document"
+                value={editLeaderForm.document}
+                onChange={(e) => setEditLeaderForm({ ...editLeaderForm, document: e.target.value })}
+                placeholder="Número de documento"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="edit-password">Nueva Contraseña (opcional)</Label>
+              <Input
+                id="edit-password"
+                type="password"
+                value={editLeaderForm.password}
+                onChange={(e) => setEditLeaderForm({ ...editLeaderForm, password: e.target.value })}
+                placeholder="Dejar vacío para mantener la actual"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="edit-parent">Líder Padre (opcional)</Label>
+              <Select
+                value={editLeaderForm.parentLeaderId}
+                onValueChange={(value) => setEditLeaderForm({ ...editLeaderForm, parentLeaderId: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar líder padre" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Ninguno (Líder Principal)</SelectItem>
+                  {leaders
+                    .filter(l => l.id !== selectedLeaderForEdit?.id && !l.parentLeaderId)
+                    .map((leader) => (
+                      <SelectItem key={leader.id} value={leader.id}>
+                        {leader.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsEditLeaderDialogOpen(false)}
+              disabled={isSubmittingLeader}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={submitEditLeader}
+              disabled={isSubmittingLeader}
+            >
+              {isSubmittingLeader ? 'Guardando...' : 'Guardar Cambios'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de Confirmación de Eliminación */}
+      <Dialog open={isDeleteLeaderDialogOpen} onOpenChange={setIsDeleteLeaderDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Eliminar Líder</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas eliminar este líder?
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedLeaderForDelete && (
+            <div className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="font-medium">{selectedLeaderForDelete.name}</p>
+                <p className="text-sm text-muted-foreground">CC: {selectedLeaderForDelete.document}</p>
+                <div className="mt-2 space-y-1">
+                  <p className="text-sm">
+                    • {selectedLeaderForDelete._count?.voters || 0} votantes
+                  </p>
+                  <p className="text-sm">
+                    • {selectedLeaderForDelete._count?.subLeaders || 0} sublíderes
+                  </p>
+                </div>
+              </div>
+              
+              {(selectedLeaderForDelete._count?.voters > 0 || selectedLeaderForDelete._count?.subLeaders > 0) && (
+                <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <p className="text-sm text-destructive font-medium">
+                    ⚠️ No se puede eliminar este líder
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Primero debes eliminar o reasignar sus votantes y sublíderes.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteLeaderDialogOpen(false)}
+              disabled={isSubmittingLeader}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteLeader}
+              disabled={
+                isSubmittingLeader ||
+                (selectedLeaderForDelete?._count?.voters > 0) ||
+                (selectedLeaderForDelete?._count?.subLeaders > 0)
+              }
+            >
+              {isSubmittingLeader ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
