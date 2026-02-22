@@ -35,8 +35,16 @@ interface Leader {
   id: string
   document: string
   name: string
+  parentLeaderId?: string | null
+  parentLeader?: {
+    id: string
+    name: string
+    document: string
+  }
+  subLeaders?: Leader[]
   _count?: {
     voters: number
+    subLeaders: number
   }
 }
 
